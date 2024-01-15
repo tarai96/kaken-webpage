@@ -1,1 +1,9 @@
 node_modules/
+.vs/
+python/directml-tf2
+python/vanv
+python/venv
+python/__pycache__
+python/svg
+python/log
+python/checkpoints
