@@ -11,19 +11,43 @@ phina.define('Board_Space', {
   superClass: 'DisplayElement',
   init: function () {
     this.superInit();
+    const width = height = 450;
+    const mass_width = mass_height = 75;
     this.ban = Sprite('othello_ban').addChildTo(this);
+    this.ban.alpha = 0.0;
+    this.ban_base = RectangleShape({
+      width: width,
+      height: height,
+      fill: 'green',
+      stroke: 'black',
+      strokeWidth: 20,
+      cornerRadius: 2
+    }).addChildTo(this);
     this.pieces = DisplayElement().addChildTo(this);
     this.mass = DisplayElement().addChildTo(this);
     // 将棋盤の当たり判定ます
     console.log("N_COLS, N_ROWS", N_COLS, N_ROWS);
     for (let j = 0; j < N_ROWS; j++) {
+      if (j != 0){
+        // 罫線
+        RectangleShape({
+          width: width,
+          height: 3,
+          fill: 'black',
+          strokeWidth: 0,
+          cornerRadius: 0
+        }).addChildTo(this)
+        .setPosition(0,
+          this.posy_mass(j,mass_height) - 0.5*mass_height
+          ,2);
+      }
       for (let i = 0; i < N_COLS; i++) {
         // RectangleShape
         let mass = xyToIdx(j, i);
         //console.log("mass:", mass);
-        Mass(mass).addChildTo(this.mass)
-          .setPosition(48 * (i - (N_ROWS - 1) / 2) + 0,
-            52 * (j - (N_COLS - 1) / 2) + 0)
+        Mass({mass:mass,width:mass_width,height:mass_height}).addChildTo(this.mass)
+          .setPosition(this.posx_mass(i,mass_width),
+            this.posy_mass(j,mass_height),1)
           .on('pointstart', function () {
             // 駒を置くとき(ここに動くことは確定している)
             this.parent.parent.put_stone(this.number);
@@ -34,6 +58,12 @@ phina.define('Board_Space', {
     this.state = getInitialstate();
     this.turn = 1; // 1 or -1
     this.done = false;
+  },
+  posx_mass:function(number,mass_width){
+    return mass_width * (number - (N_ROWS - 1) / 2) + 0;
+  },
+  posy_mass:function(number,mass_height){
+    return mass_height * (number - (N_COLS - 1) / 2) + 0;
   },
   ready_put: function () {
     const valid_actions = getValidActions(this.state, this.turn);
@@ -59,13 +89,14 @@ phina.define('Board_Space', {
     console.log(this.state, action, this.turn);
     [this.state, done] = step(this.state, action, this.turn);
     this.show();
-    if (done) {
+    console.log("done",done);
+    if(done){
       this.done = true;
-      return done;
-    } else {
-      this.turn = this.turn * -1;
-      return done;
+    }else if(isDone(this.state,-this.turn)){
+      this.done = true;
     }
+    this.turn = this.turn * -1;
+    return this.done;
   },
   get_valid_actions: function () {
     return getValidActions(this.state, this.turn);
@@ -95,8 +126,7 @@ phina.define('Board_Space', {
 
 phina.define('Mass', {
   superClass: 'DisplayElement',
-  init: function (number) {
-    let width = 45, height = 49;
+  init: function ({number,width=45,height=49}) {
     this.superInit({
       width: width,
       height: height,
@@ -135,7 +165,12 @@ phina.define('Mass', {
     this.light.alpha = 0.0;
   },
 });
-
+phina.define('Result',{
+	superClass: 'DisplayElement',
+	init: function(){
+		 this.superInit();
+  },
+});
 /*
  * メインシーン
  */
@@ -150,6 +185,7 @@ phina.define("MainScene", {
     this.backgroundColor = 'skyblue';
 
     this.last_turn = 1;
+    this.gamefinished=false;
 
     this.board = Board_Space().addChildTo(this);
     this.board.setPosition(this.gridX.center(), this.gridY.center());
@@ -161,8 +197,25 @@ phina.define("MainScene", {
   update: function (app) {
     //console.log("turn", this.turn, "dragging", this.dragging, "pick",
     //this.pick, "put", this.put, "com_standby", this.com_standby);
+    // console.log("is_game_over",this.board.is_game_over());
     if (this.board.is_game_over()) {
-      console.log("geme finished");
+      if(this.gamefinished){
+        // donothing
+      }else{
+        console.log("game finished");
+        let black,white;
+        [black , white] = this.board.get_result();
+        console.log("black,white",black,white);
+        if(black == 1){
+          let message = "black win";
+        }else if(white == 1){
+          let message = "white win";
+        }else{
+          let message = "draw"
+        }
+        this.show_result(message);
+        this.gamefinished = true;
+      }
     }
     if (this.board.turn == 1) {
       this.last_turn = 1;
@@ -185,6 +238,22 @@ phina.define("MainScene", {
         this.player_turn_finished_time = -1;
       }
     }
+  },
+  show_result: function(message) {
+		let result_elements = Result().addChildTo(this)
+																	.setPosition(this.gridX.center(),this.gridY.center());
+		let rect = RectangleShape({
+      width: 300,
+      height: 200,
+      fill: '#5BA8D9',
+      // stroke: 'lime',
+      strokeWidth: 0,
+      cornerRadius: 0
+    }).addChildTo(result_elements);
+		rect.alpha = 0.7;
+		// ラベル表示
+		let label = Label(message).addChildTo(result_elements);
+		// label.setPosition(result_elements.gridX.center(), result_elements.gridY.center());
   },
 });
 
