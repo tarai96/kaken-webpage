@@ -124,7 +124,9 @@ function usi_to_xy(usi_xy) {
   return [x, y];
 }
 
-function usi_to_action(usi_action, board_array, piece_instructions, pieces_status, NUM_HEIGHTMASS, NUM_WIDTHMASS,NUM_PIECE) {
+function usi_to_action(usi_action, board_array,
+  piece_instructions, pieces_status,
+  NUM_HEIGHTMASS, NUM_WIDTHMASS, NUM_PIECE) {
   let board = board_array.concat();
   let piece_status = pieces_status.concat();
   let sx;

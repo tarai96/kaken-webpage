@@ -13,6 +13,7 @@ let action_box = {
 
 // サーバからmember_postが送られてきたとき
 socket.on("action-reply", (msg) => {
+  console.log("receive action");
   console.log(msg);
   console.log(msg["action"]);
   action_box.usi_action = msg["action"]
@@ -313,7 +314,7 @@ phina.define("Narikei", {
     this.before_evolves = before_evolves_sprite;
     this.on("pointstart", function () {
       this.parent.parent.parent.pick = true;
-      this.parent.parent.parent.num_pick_piece = this.before_evolves_sprite.c.control_number;
+      this.parent.parent.parent.num_pick_piece = this.before_evolves.c.control_number;
     });
   },
 });
@@ -778,8 +779,9 @@ phina.define("MainScene", {
     }
 	},
 	// 毎フレーム更新処理
-	update: function(app) {
-	  console.log("turn",this.turn,"dragging",this.dragging,"pick",this.pick,"put",this.put);
+  update: function (app) {
+    console.log("turn", this.turn, "dragging", this.dragging, "pick",
+      this.pick, "put", this.put, "com_standby", this.com_standby);
 	  // 自分の番
 	  if(this.turn == 0){
       if (this.pick) {
@@ -837,14 +839,16 @@ phina.define("MainScene", {
         //通信待機中
         if (action_box.received == false) {
           let usi_action = action_box["usi_action"];
-
+          console.log("turn:1,usi_action:", usi_action);
           let action = 0;
           let evolves = false;
           let origin_seed = 0, piece_number = 0;
           let control_number = 0;
-          [action, evolves, origin_seed, piece_number] = usi_to_action(usi_action, this.board_array,
-            this.piece_instructions, this.piece_status,
-            this.NUM_HEIGHTMASS, this.NUM_WIDTHMASS, this.NUM_PIECE);
+          [action, evolves, origin_seed, piece_number]
+            = usi_to_action(usi_action, this.board_array,
+              this.piece_instructions, this.piece_status,
+              this.NUM_HEIGHTMASS, this.NUM_WIDTHMASS, this.NUM_PIECE);
+          console.log("action,evolves, origin_seed, piece_number", action, evolves, origin_seed, piece_number)
           control_number = stat_num_to_ctr_num(origin_seed, piece_number, this.NUM_PIECE);
           [this.board_array, this.piece_status, this.reservePieces, this.done]
             = syogi_step({
@@ -887,7 +891,7 @@ phina.define("MainScene", {
         const rotate = a => a[0].map((_, c) => a.map(r => r[c])).reverse();
         state = this.board_array
         const encoding1_state = state.map(value => {
-          // 3->2 ,2->3,4->7,5->4,6->6,7->5,8->8
+          // 2->3,3->2 ,4->7,5->4,6->6,7->5,8->8
           let encode_value = 0
           switch (Math.abs(value)) {
             case 2:
@@ -906,7 +910,7 @@ phina.define("MainScene", {
               encode_value = 5;
               break;
             default:
-              encode_value = value;
+              encode_value = Math.abs(value);
               break;
           }
           if (value < 0) {
