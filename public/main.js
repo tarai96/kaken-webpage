@@ -944,7 +944,7 @@ phina.define("MainScene", {
         console.log(encode_state);
         
         // Socket.ioサーバへ送信
-        socket.emit("post", { state: encode_state,current_player:1 });
+        socket.emit("post", {mode:'shogi', state: encode_state,current_player:1, token:IAM.token });
         // 通信待機
         this.com_standby = true;
       }

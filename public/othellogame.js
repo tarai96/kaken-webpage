@@ -1,3 +1,25 @@
+//-------------------------------------
+// Socket.ioサーバへ接続
+//-------------------------------------
+const socket = io({ transports: ['websocket'] });
+// サーバーから受けとったactionを置いとくjson
+// usi_action : "1a2b"みたいな感じ
+
+let action_box = {
+  "action": "",
+  "received": true
+}
+
+// サーバからmember_postが送られてきたとき
+socket.on("action-reply", (msg) => {
+  console.log("receive action");
+  console.log(msg);
+  console.log(msg["action"]);
+  action_box.action = msg["action"]
+  action_box.received = false
+});
+
+
 phina.globalize();
 const ASSETS = {
   // 画像
@@ -27,6 +49,20 @@ phina.define('Board_Space', {
     this.mass = DisplayElement().addChildTo(this);
     // 将棋盤の当たり判定ます
     console.log("N_COLS, N_ROWS", N_COLS, N_ROWS);
+    for (let i = 0; i < N_COLS; i++) {
+      if (i != 0) {
+        // 罫線
+        RectangleShape({
+          width: 3,
+          height: height,
+          fill: 'black',
+          strokeWidth: 0,
+          cornerRadius: 0
+        }).addChildTo(this)
+          .setPosition(this.posy_mass(i, mass_width) - 0.5 * mass_width,
+            0, 2);
+      }
+    }
     for (let j = 0; j < N_ROWS; j++) {
       if (j != 0){
         // 罫線
@@ -42,10 +78,11 @@ phina.define('Board_Space', {
           ,2);
       }
       for (let i = 0; i < N_COLS; i++) {
+
         // RectangleShape
         let mass = xyToIdx(j, i);
         //console.log("mass:", mass);
-        Mass({mass:mass,width:mass_width,height:mass_height}).addChildTo(this.mass)
+        Mass({ number: mass, width: mass_width, height: mass_height }).addChildTo(this.mass)
           .setPosition(this.posx_mass(i,mass_width),
             this.posy_mass(j,mass_height),1)
           .on('pointstart', function () {
@@ -74,10 +111,22 @@ phina.define('Board_Space', {
         this.mass.children[j].on_lighting();
       }
     }
+    if (valid_actions[0] == ACTION_NOOP) {
+      this.put_stone(ACTION_NOOP);
+    }
   },
   put_stone: function (action) {
+    if (this.is_game_over()) {
+      return true;
+    }
     const valid_actions = getValidActions(this.state, this.turn);
     if (!valid_actions.includes(action)) {
+      let encode_state = [];
+      while (this.state.length) { encode_state.push(this.state.splice(0, 6)); }
+      console.log("shaped_state");
+      console.log(encode_state);
+      console.log("valid_actions", valid_actions);
+      console.log("action", action);
       throw new Error("action is not valid");
     }
     for (let j = 0; j < N_ROWS * N_COLS; j++) {
@@ -89,10 +138,9 @@ phina.define('Board_Space', {
     console.log(this.state, action, this.turn);
     [this.state, done] = step(this.state, action, this.turn);
     this.show();
-    console.log("done",done);
+    console.log("done", done);
+    
     if(done){
-      this.done = true;
-    }else if(isDone(this.state,-this.turn)){
       this.done = true;
     }
     this.turn = this.turn * -1;
@@ -106,6 +154,9 @@ phina.define('Board_Space', {
   },
   get_result: function () {
     return getResult(this.state);
+  },
+  get_state: function () {
+    return this.state;
   },
   count_stone: function () {
     return countStone(this.state);
@@ -126,7 +177,7 @@ phina.define('Board_Space', {
 
 phina.define('Mass', {
   superClass: 'DisplayElement',
-  init: function ({number,width=45,height=49}) {
+  init: function ({ number, width = 45, height = 49 }) {
     this.superInit({
       width: width,
       height: height,
@@ -142,8 +193,12 @@ phina.define('Mass', {
     this.number = number;
     this.black = Sprite('black').addChildTo(this);
     this.black.alpha = 0.0;
+    this.black.scaleX = 1.5;
+    this.black.scaleY = 1.5;
     this.white = Sprite('white').addChildTo(this);
     this.white.alpha = 0.0;
+    this.white.scaleX = 1.5;
+    this.white.scaleY = 1.5;
     // 1:black,-1:white,0:empty
   },
   set_stone: function (stone) {
@@ -195,47 +250,72 @@ phina.define("MainScene", {
   },
   // 毎フレーム更新処理
   update: function (app) {
-    //console.log("turn", this.turn, "dragging", this.dragging, "pick",
-    //this.pick, "put", this.put, "com_standby", this.com_standby);
-    // console.log("is_game_over",this.board.is_game_over());
     if (this.board.is_game_over()) {
-      if(this.gamefinished){
+      if (this.gamefinished) {
         // donothing
-      }else{
+      } else {
         console.log("game finished");
-        let black,white;
-        [black , white] = this.board.get_result();
-        console.log("black,white",black,white);
-        if(black == 1){
-          let message = "black win";
-        }else if(white == 1){
-          let message = "white win";
-        }else{
-          let message = "draw"
+        let black, white;
+        [black, white] = this.board.get_result();
+        console.log("black,white", black, white);
+        let message = "";
+        if (black == 1) {
+          message = "black win";
+        } else if (white == 1) {
+          message = "white win";
+        } else {
+          message = "draw"
         }
         this.show_result(message);
         this.gamefinished = true;
       }
-    }
-    if (this.board.turn == 1) {
-      this.last_turn = 1;
-      // 自分の番
-    } else if (this.board.turn == -1) {
-      // 相手の番
-      if (this.last_turn == 1) {
-        this.player_turn_finished_time = Math.floor(new Date().getTime() / 1000);
-        this.last_turn = -1;
-      }
-      let current_time = Math.floor(new Date().getTime() / 1000);
-      // 2秒待つ
-      if (current_time - this.player_turn_finished_time > 1) {
-        const valid_actions = this.board.get_valid_actions();
-        let action_idx = Math.floor(Math.random() * valid_actions.length);
-        let action = valid_actions[action_idx];
-        this.board.put_stone(action);
-        // 入力を受け付ける
-        this.board.ready_put()
-        this.player_turn_finished_time = -1;
+    } else {
+      if (this.board.turn == 1) {
+        this.last_turn = 1;
+        // 自分の番
+      } else if (this.board.turn == -1) {
+        // 相手の番
+        if (this.last_turn == 1) {
+          this.player_turn_finished_time = Math.floor(new Date().getTime() / 1000);
+          this.last_turn = -1;
+        }
+        // サーバーと通信する場合 
+        if (this.com_standby) {
+          //通信待機中
+          if (action_box.received == false) {
+            let current_time = Math.floor(new Date().getTime() / 1000);
+            if (current_time - this.player_turn_finished_time > 1) {
+              let action = Number(action_box["action"]);
+              console.log("turn:1,action:", action);
+              this.board.put_stone(action);
+              // 入力を受け付ける
+              this.board.ready_put()
+              this.player_turn_finished_time = -1;
+
+              action_box.received = true;
+              this.com_standby = false;
+            }
+          }
+        } else {
+          const state = this.board.get_state();
+          // Socket.ioサーバへ送信
+          socket.emit("post", { mode: 'othello', state: state, current_player: -1, token: IAM.token });
+          // 通信待機
+          this.com_standby = true;
+        }
+        /*
+        let current_time = Math.floor(new Date().getTime() / 1000);
+        // 2秒待つ
+        if (current_time - this.player_turn_finished_time > 1) {
+          const valid_actions = this.board.get_valid_actions();
+          let action_idx = Math.floor(Math.random() * valid_actions.length);
+          let action = valid_actions[action_idx];
+          this.board.put_stone(action);
+          // 入力を受け付ける
+          this.board.ready_put()
+          this.player_turn_finished_time = -1;
+        }
+        */
       }
     }
   },

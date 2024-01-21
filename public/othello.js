@@ -101,7 +101,7 @@ function step(state, action, player) {
     next_state[action] = player;
   }
 
-  const done = isDone([...state], -player);
+  const done = isDone([...next_state], -player);
 
   return [next_state, done];
 }
@@ -111,6 +111,8 @@ function isDone(state, player) {
     if (getValidActions(state, -player).length === 1 && getValidActions(state, -player)[0] === ACTION_NOOP) {
       return true;
     } else {
+      console.log("valid_actions current_player,next_player")
+      console.log(getValidActions(state, player), getValidActions(state, -player))
       return false;
     }
   } else {

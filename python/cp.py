@@ -7,33 +7,43 @@ import json
 import sys
 import os
 
-#print(os.getcwd())
 os.chdir('./python')
-#print(os.getcwd())
-#print(sys.executable)
 
 import tensorflow as tf
 import numpy as np
 from cshogi import *
 
 from network import AlphaZeroResNet
-from mcts import MCTS
+from shogi_mcts import MCTS as shogi_MCTS
+from othello_mcts import MCTS as othello_MCTS
 import shogi
+import othello
 
 from myLogger import set_logger, getLogger
 set_logger()
 logger = getLogger(__name__)
+logger.info("start running")
 
-
-network = AlphaZeroResNet(action_space=shogi.ACTION_SPACE)
-network.load_weights("checkpoints/network")
+shogi_network = AlphaZeroResNet(action_space=shogi.ACTION_SPACE)
+shogi_network.load_weights("checkpoints/network")
 dummy_state = shogi.encode_state(shogi.get_initial_state(), 1)
-#network.predict(dummy_state)
+#shogi_network.predict(dummy_state)
 
 if len(dummy_state.shape) == 3:
     dummy_state = dummy_state[np.newaxis, ...]
 with tf.device("/gpu:0"):
-    nn_policy, nn_value = network(
+    nn_policy, nn_value = shogi_network(
+        dummy_state)
+
+othello_network = AlphaZeroResNet(action_space=othello.ACTION_SPACE)
+othello_network.load_weights("weights/othello/network")
+dummy_state = othello.encode_state(othello.get_initial_state(), 1)
+#othello_network.predict(dummy_state)
+
+if len(dummy_state.shape) == 3:
+    dummy_state = dummy_state[np.newaxis, ...]
+with tf.device("/gpu:0"):
+    nn_policy, nn_value = othello_network(
         dummy_state)
 
 
@@ -42,11 +52,11 @@ def preparation_best_action(root_srate,current_player,current_weights):
   global network
 
 
-def get_best_action(state,current_player,num_mcts_simulations):
+def shogi_get_best_action(state,current_player,num_mcts_simulations):
 
-  global network
+  global shogi_network
   dirichlet_alpha = None
-  mcts = MCTS(network=network, alpha=dirichlet_alpha)
+  mcts = shogi_MCTS(network=shogi_network, alpha=dirichlet_alpha)
   
   #logger.info(f"len(state):{len(state)}")
   #logger.info(f"state[0:81]:{state[0:81]}")
@@ -77,33 +87,62 @@ def get_best_action(state,current_player,num_mcts_simulations):
     logger.info(f"usi_action:{usi_action}")
   return usi_action
 
+def othello_get_best_action(state,current_player,num_mcts_simulations):
+  global othello_network
+  dirichlet_alpha = None
+  mcts = othello_MCTS(network=othello_network, alpha=dirichlet_alpha)
+  shaped_state = np.array(state).reshape(6,6)
+  logger.info(f"shaped_state:{shaped_state}")
+  valid_actions = othello.get_valid_actions(state,current_player)
+  logger.info(f"valid_actions:{valid_actions}")
+  logger.info("mcts.search start")
+  mcts_policy = mcts.search(root_state=state,
+                          current_player=current_player,
+                          num_simulations=num_mcts_simulations)
+  action = random.choice(
+                np.where(np.array(mcts_policy) == max(mcts_policy))[0])
+  if(not (action in valid_actions)):
+    logger.info(f"not valid action:{action}")
+    # randomにしてみる
+    #action = othello.greedy_action(state, current_player, epsilon=0.3)
+    action = random.choice(valid_actions)
+
+  return action
+
 if __name__ == "__main__":
+  last_data = "null"
   while(True):
     data = sys.stdin.readline()
     logger.info(f"data:{data}")
+    if(data == last_data):
+      logger.info(f"last_data == data:{data}")
+      continue
+    last_data = data
     if data != "":
       json_data = json.loads(data)
-      #json_data = json.loads(json_data)
-      #json_data = data
       logger.info(f"json_data:{json_data}")
-      #print(json_data["current_player"])
+      mode = json_data["mode"]
       state = json_data["state"]
       current_player = json_data["current_player"]
-      if(current_player == 1):
-        current_player = -1
-      elif(current_player == 0):
-        current_player = 1
-      else:
-        logger.warning("unexpect current_player")
-      
-      #print("state,current_player")
-      #print(state)
-      #print(current_player)
-      usi_action = get_best_action(state,current_player,num_mcts_simulations=1)
+      if(mode == "shogi"):
+        if(current_player == 1):
+          current_player = -1
+        elif(current_player == 0):
+          current_player = 1
+        else:
+          logger.warning("unexpect current_player")
+        
+        usi_action = shogi_get_best_action(state,current_player,num_mcts_simulations=20)
 
-      #出力
-
-      #print('2c4d')
-      logger.info(f"out best_action:{usi_action}")
-      print(usi_action)
+        #print('2c4d')
+        logger.info(f"out best_action:{usi_action}")
+        logger.info(f"token:{json_data['token']}")
+        #出力
+        print(json.dumps({"token": json_data["token"], "action": usi_action}))
+      elif(mode == "othello"):
+        action = othello_get_best_action(state,current_player,num_mcts_simulations=50)
+        logger.info(f"out best_action:{action}")
+        logger.info(f"token:{json_data['token']}")
+        #出力 actionはnumpyのint64型になっているのでpythonのint型に変える
+        print(json.dumps({"token": json_data["token"], "action": action.item()}))
     
