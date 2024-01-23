@@ -111,7 +111,7 @@ io.on("connection", (socket) => {
         io.to(socket.id).emit("action-reply", { action: best_action });
         clearInterval(get_repeat);
       }
-    }, 500);
+    }, 50);
   });
 });
 

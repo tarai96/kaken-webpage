@@ -6,6 +6,7 @@ from scipy.sparse import coo_matrix
 import json
 import sys
 import os
+import functools
 
 os.chdir('./python')
 
@@ -51,10 +52,14 @@ def preparation_best_action(root_srate,current_player,current_weights):
   # プレイヤーが指す前に返しの一手を考えておく
   global network
 
-
 def shogi_get_best_action(state,current_player,num_mcts_simulations):
+  state_str = json.dumps(state)
+  return _shogi_get_best_action(state_str,current_player,num_mcts_simulations)
 
+@functools.lru_cache(maxsize=4096)
+def _shogi_get_best_action(state_str,current_player,num_mcts_simulations):
   global shogi_network
+  state = json.loads(state_str)
   dirichlet_alpha = None
   mcts = shogi_MCTS(network=shogi_network, alpha=dirichlet_alpha)
   
@@ -88,7 +93,13 @@ def shogi_get_best_action(state,current_player,num_mcts_simulations):
   return usi_action
 
 def othello_get_best_action(state,current_player,num_mcts_simulations):
+  state_str = json.dumps(state)
+  return _othello_get_best_action(state_str,current_player,num_mcts_simulations)
+
+@functools.lru_cache(maxsize=4096)
+def _othello_get_best_action(state_str,current_player,num_mcts_simulations):
   global othello_network
+  state = json.loads(state_str)
   dirichlet_alpha = None
   mcts = othello_MCTS(network=othello_network, alpha=dirichlet_alpha)
   shaped_state = np.array(state).reshape(6,6)
@@ -113,12 +124,12 @@ if __name__ == "__main__":
   last_data = "null"
   while(True):
     data = sys.stdin.readline()
-    logger.info(f"data:{data}")
     if(data == last_data):
       logger.info(f"last_data == data:{data}")
       continue
     last_data = data
     if data != "":
+      logger.info(f"data:{data}")
       json_data = json.loads(data)
       logger.info(f"json_data:{json_data}")
       mode = json_data["mode"]
@@ -140,7 +151,7 @@ if __name__ == "__main__":
         #出力
         print(json.dumps({"token": json_data["token"], "action": usi_action}))
       elif(mode == "othello"):
-        action = othello_get_best_action(state,current_player,num_mcts_simulations=50)
+        action = othello_get_best_action(state,current_player,num_mcts_simulations=30)
         logger.info(f"out best_action:{action}")
         logger.info(f"token:{json_data['token']}")
         #出力 actionはnumpyのint64型になっているのでpythonのint型に変える

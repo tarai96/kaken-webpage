@@ -28,17 +28,52 @@ function getInitialstate() {
 function getDirections(i) {
   const [, col] = idxToXY(i);
 
-  const up = Array.from({ length: i / N_COLS }, (_, index) => i - index * N_COLS).slice(1);
-  const down = Array.from({ length: (N_ROWS * N_COLS - i) / N_COLS }, (_, index) => i + index * N_COLS).slice(1);
+  //const up = Array.from({ length: i / N_COLS }, (_, index) => i - index * N_COLS).slice(1);
+  //const down = Array.from({ length: (N_ROWS * N_COLS - i) / N_COLS }, (_, index) => i + index * N_COLS).slice(1);
+  // range(i, -1, -N_COLS))[1: ]
+  let uptmp = [];
+  for (let a = i; a > -1; a = a - N_COLS) {
+    uptmp.push(a)
+  }
+  const up = uptmp.slice(1)
+  //range(i, N_ROWS * N_COLS, N_COLS))[1: ]
+  let downtmp = [];
+  for (let a = i; a < N_ROWS * N_COLS; a = a + N_COLS) {
+    downtmp.push(a)
+  }
+  const down = downtmp.slice(1)
 
   const left = Array.from({ length: col }, (_, index) => i - (col - index)).reverse();
   const right = Array.from({ length: N_COLS - col - 1 }, (_, index) => i + index + 1);
 
-  const ul = Array.from({ length: col }, (_, index) => i - index * (N_COLS + 1)).slice(1);
-  const ur = Array.from({ length: N_COLS - col - 1 }, (_, index) => i - index * (N_COLS - 1)).slice(1);
+  //const ul = Array.from({ length: col }, (_, index) => i - index * (N_COLS + 1)).slice(1);
+  //const ur = Array.from({ length: N_COLS - col - 1 }, (_, index) => i - index * (N_COLS - 1)).slice(1);
+  let ultmp = [];
+  for (let a = i; a > -1; a = a - N_COLS - 1) {
+    ultmp.push(a)
+  }
+  const ul = ultmp.slice(1, col + 1)
 
-  const ll = Array.from({ length: col }, (_, index) => i + index * (N_COLS - 1)).slice(1);
-  const lr = Array.from({ length: N_COLS - col - 1 }, (_, index) => i + index * (N_COLS + 1)).slice(1);
+  let urtmp = [];
+  for (let a = i; a > -1; a = a - N_COLS + 1) {
+    urtmp.push(a)
+  }
+  const ur = urtmp.slice(1, N_COLS - col);
+  // i, N_ROWS * N_COLS, N_COLS-1))[1:col+1]
+  let lltmp = [];
+  for (let a = i; a < N_ROWS * N_COLS; a = a + N_COLS - 1) {
+    lltmp.push(a)
+  }
+  const ll = lltmp.slice(1, col + 1);
+  // range(i, N_ROWS * N_COLS, N_COLS+1))[1:N_COLS - col]
+  let lrtmp = [];
+  for (let a = i; a < N_ROWS * N_COLS; a = a + N_COLS + 1) {
+    lrtmp.push(a)
+  }
+  const lr = lrtmp.slice(1, N_COLS - col)
+
+  //const ll = Array.from({ length: col }, (_, index) => i + index * (N_COLS - 1)).slice(1);
+  //const lr = Array.from({ length: N_COLS - col - 1 }, (_, index) => i + index * (N_COLS + 1)).slice(1);
 
   return [up, down, left, right, ul, ur, ll, lr];
 }
@@ -54,6 +89,9 @@ function isValidAction(state, action, player) {
     const stones = direction.map(i => state[i]);
     if (stones.includes(player) && stones.includes(-player)) {
       const index = stones.indexOf(player);
+      if (index === -1) {
+        console.log("error index is not valid index:", index);
+      }
       const subset = stones.slice(0, index);
       if (subset.length > 0 && subset.every(val => val === -player)) {
         return true;

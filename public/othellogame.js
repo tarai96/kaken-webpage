@@ -258,15 +258,16 @@ phina.define("MainScene", {
         let black, white;
         [black, white] = this.board.get_result();
         console.log("black,white", black, white);
-        let message = "";
+        let winlose = "";
         if (black == 1) {
-          message = "black win";
+          winlose = "black win";
         } else if (white == 1) {
-          message = "white win";
+          winlose = "white win";
         } else {
-          message = "draw"
+          winlose = "draw"
         }
-        this.show_result(message);
+        const [num_black, num_white] = this.board.count_stone()
+        this.show_result(winlose, "black:"+String(num_black), "white:"+String(num_white));
         this.gamefinished = true;
       }
     } else {
@@ -319,7 +320,7 @@ phina.define("MainScene", {
       }
     }
   },
-  show_result: function(message) {
+  show_result: function(message0,message1="",message2="") {
 		let result_elements = Result().addChildTo(this)
 																	.setPosition(this.gridX.center(),this.gridY.center());
 		let rect = RectangleShape({
@@ -332,7 +333,12 @@ phina.define("MainScene", {
     }).addChildTo(result_elements);
 		rect.alpha = 0.7;
 		// ラベル表示
-		let label = Label(message).addChildTo(result_elements);
+    let label0 = Label(message0).addChildTo(result_elements)
+      .setPosition(0, -20);
+    let label1 = Label(message1).addChildTo(result_elements)
+      .setPosition(-75, 20);
+    let label2 = Label(message2).addChildTo(result_elements)
+      .setPosition(75, 20);
 		// label.setPosition(result_elements.gridX.center(), result_elements.gridY.center());
   },
 });
@@ -349,7 +355,7 @@ phina.main(function () {
     assets: ASSETS,
   });
   // fps表示
-  app.enableStats();
+  //app.enableStats();
   // 実行
   app.run();
 });

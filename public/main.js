@@ -517,7 +517,7 @@ phina.define('Two_choiceQ_Space', {
       width: 300,
       height: 200,
       // TODO 色
-      fill: 'red',
+      fill: 'white',
       stroke: 'lime',
       strokeWidth: 0,
       cornerRadius: 0,
@@ -528,11 +528,13 @@ phina.define('Two_choiceQ_Space', {
     this.question.setPosition(0, -40);
     this.question.text = q_text;
     // ボタン
+    const button_width = 100;
+    const button_height = 50;
     this.button_yes = Button({
-      width: 75,
-      height: 50,
+      width: button_width,
+      height: button_height,
       // TODO 色
-      fill: 'blue',
+      fill: 'black',
       // stroke: 'lime',
       strokeWidth: 0,
       cornerRadius: 0,
@@ -541,14 +543,15 @@ phina.define('Two_choiceQ_Space', {
     this.button_yes.setPosition(-75, 50);
 
     this.button_no = Button({
-      width: 75,
-      height: 50,
+      width: button_width,
+      height: button_height,
       // TODO 色
-      fill: 'green',
-      // stroke: 'lime',
-      strokeWidth: 0,
+      fill: 'white',
+      stroke: 'black',
+      strokeWidth: 2,
       cornerRadius: 0,
       text: N_text,
+      fontColor: 'black',
     }).addChildTo(this);
     this.button_no.setPosition(75, 50);
     this.button_yes.on("pointstart", function () {
@@ -562,6 +565,7 @@ phina.define('Two_choiceQ_Space', {
     });
     this.clicked = false;
     this.yes = false;
+    console.log(this);
   },
   get_answer: function () {
     return [this.clicked, this.yes];
@@ -883,7 +887,7 @@ phina.define("MainScene", {
           }
           if (this.done == true) {
             this.turn = 10;
-            this.game_status = "enemy win"
+            this.game_status = "負け"
           }
         }
       } else {
@@ -1232,7 +1236,7 @@ phina.define("MainScene", {
     this.dragging = false;
 		if(this.done == true){
 			this.turn = 10;
-			this.game_status = "player win"
+			this.game_status = "勝ち"
     }
   },
   
@@ -1312,14 +1316,16 @@ phina.define("MainScene", {
 		let rect = RectangleShape({
       width: 300,
       height: 200,
-      fill: '#5BA8D9',
+      //fill: '#5BA8D9',
+      fill: 'white',
       // stroke: 'lime',
       strokeWidth: 0,
       cornerRadius: 0
     }).addChildTo(result_elements);
-		rect.alpha = 0.7;
+		rect.alpha = 0.9;
 		// ラベル表示
-		let label = Label(this.game_status).addChildTo(result_elements);
+    let label = Label(this.game_status).addChildTo(result_elements);
+    label.fontSize = 50;
 		// label.setPosition(result_elements.gridX.center(), result_elements.gridY.center());
   }
 });
@@ -1336,7 +1342,7 @@ phina.main(function() {
 	assets: ASSETS,
 	});
 	// fps表示
-	app.enableStats();
+	//app.enableStats();
 	// 実行
 	app.run();
 });
